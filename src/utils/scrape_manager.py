@@ -50,7 +50,7 @@ class ScrapeManager():
         if browser == "Mozilla Firefox":
             return webdriver.Firefox()
         if browser == "Google Chrome":
-            return webdriver.Chrome
+            return webdriver.Chrome()
         raise ValueError(f"Unsupported browser: {browser}")
     
     def wait_condition(self, driver, locator):
@@ -83,31 +83,33 @@ class ScrapeManager():
             self.wait_condition(driver, locator)
             html = driver.page_source
             page = BeautifulSoup(html, "html.parser")
+            try:
+                product_family_html = page.select(".notranslate.plp-price-module__product-name")
+                product_description_html = page.select(".plp-price-module__description")
+                art_numbers_html = page.select(".search-summary__content h1")
+                url_html = page.select('.plp-mastercard__item.plp-mastercard__image a')
+                price_html = page.select(".plp-price__sr-text")
 
-            product_families = page.select(".notranslate.plp-price-module__product-name")
-            product_descriptions = page.select(".plp-price-module__description")
-            art_numbers = page.select(".search-summary__content h1 b")
-            urls = page.select('.plp-mastercard__item.plp-mastercard__image a')
-            prices = page.select(".plp-price__sr-text")
-
-            for product_family, product_description, art_number, amount, price, url in zip(product_families, product_descriptions, art_numbers, amount, prices, urls):
-                price_float = self.convert_price_to_float(price.text)
-                self.dm.add_furniture_data(product_family.text, product_description.text, art_number.text, amount, price_float, url["href"], project_id)
-    
+                for product_family, product_description, art_number, price, url in zip(product_family_html, product_description_html, art_numbers_html, price_html, url_html):
+                    clean_art_number = art_number.text.strip('"')
+                    price_float = self.convert_price_to_float(price.text)
+                    self.dm.add_furniture_data(product_family.text, product_description.text, clean_art_number, amount, price_float, url["href"], project_id)
+            except Exception as e:
+                print(f"Scraping failed: {e}")
     def scrape_lesnina(self, project_id, url, driver, amount):
         driver.get(url)
         time.sleep(4)
         html = driver.page_source
         page = BeautifulSoup(html, "html.parser")
 
-        product_family = page.find('a',  href=re.compile(r'^/c/brend-')).find('span')
-        product_family_element = product_family.text
-        product_descriptions = page.find_all(attrs={"data-purpose": "productName.heading-2-h1"})
-        product_measurements = page.find_all(attrs={"data-purpose": "product.productAttributes"})
-        art_numbers = page.find_all(attrs={"data-purpose": "product.productNumber"})
-        prices = page.find_all(attrs={"data-purpose": "product.price.current"})
+        product_family_html = page.find('a',  href=re.compile(r'^/c/brend-')).find('span')
+        product_family_element = product_family_html.text
+        product_description_html = page.find_all(attrs={"data-purpose": "productName.heading-2-h1"})
+        product_measurements_html = page.find_all(attrs={"data-purpose": "product.productAttributes"})
+        art_numbers_html = page.find_all(attrs={"data-purpose": "product.productNumber"})
+        price_html = page.find_all(attrs={"data-purpose": "product.price.current"})
 
-        for product_description, product_measurement, art_number, price in zip(product_descriptions, product_measurements, art_numbers, prices):
+        for product_description, product_measurement, art_number, price in zip(product_description_html, product_measurements_html, art_numbers_html, price_html):
             full_description = product_description.text + product_measurement.text
             price_float = self.convert_price_to_float(price.text)
             art_number = art_number.text[-10:]

@@ -3,7 +3,7 @@ from ui.ui_manager import CustomerFurnitureApp
 from db.db_manager import SessionManager
 
 def main():
-    CUSTOMER_PATH = "src\customer.db"
+    CUSTOMER_PATH = "src/customer.db"
     sm = SessionManager(CUSTOMER_PATH)
     session = sm.create_session()
 
